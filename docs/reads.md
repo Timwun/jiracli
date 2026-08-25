@@ -933,17 +933,21 @@ The default path is deterministic and agent-grepable: `/tmp/jiracli-attach/<id>-
 
 ---
 
-## `open <ref>`
+## `open <ref> [ref...]`
 
-Opens an issue, comment, or attachment in the default browser. Accepts any ref form from the grammar table above.
+Opens one or more issues, comments, or attachments in the default browser. Accepts any ref form from the grammar table above.
 
-    jiracli open <ref> [--print-url] [--profile <name>]
+    jiracli open <ref> [ref...] [--print-url] [--profile <name>]
+
+Multiple refs are processed in order. Each URL is opened in the browser sequentially. With `--print-url`, one URL is printed per line.
+
+Compound refs (`KEY:attach:ID`, `KEY:comment:ID`) are resolved individually and can be mixed with plain keys in the same invocation.
 
 ### Flags
 
 | Flag | Description |
 |---|---|
-| `--print-url` | Print the URL to stdout instead of opening the browser |
+| `--print-url` | Print the URL(s) to stdout instead of opening the browser |
 | `--profile <name>` | Credential profile |
 
 No `--json` flag.
@@ -957,6 +961,10 @@ No `--json` flag.
 | `ACME-123:attach:11001` | `<baseURL>/secure/attachment/11001/<url-encoded-filename>` (fetches attachment metadata first to resolve the filename) |
 
 Browser: `open` on macOS, `xdg-open` on Linux. On other OS: prints the URL to stdout with `cannot auto-open on this OS — copy the URL above`.
+
+### Multi-ref error handling
+
+Per-ref errors (invalid ref, not found) are collected; successfully resolved refs are still opened/printed. All errors are reported at the end; exit 1 if any ref failed.
 
 ### Pagination and overflow
 

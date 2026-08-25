@@ -22,24 +22,35 @@ type OpenFlags struct {
 func NewOpenCmd() *cobra.Command {
 	var flags OpenFlags
 	c := &cobra.Command{
-		Use:   "open <ref>",
-		Short: "Open an issue, comment, or attachment in the browser",
-		Long: `Open resolves a Jira reference and launches it in the default browser.
+		Use:   "open <ref> [ref...]",
+		Short: "Open one or more issues, comments, or attachments in the browser",
+		Long: `Open resolves one or more Jira references and launches each in the default browser.
 
 Supported reference forms:
   ACME-123                        issue
   ACME-123:comment:NNN            specific comment
-  ACME-123:attach:NNN             attachment (fetches filename for URL)
+  ACME-123:attach:NNN             attachment (fetches filename for URL; single ref only)
   https://host/browse/ACME-123    browse URL
 
-Use --print-url to print the resolved URL instead of opening it.`,
-		Args: cobra.ExactArgs(1),
+Use --print-url to print the resolved URLs instead of opening them.`,
+		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			result, err := Open(cmd.Context(), flags, args[0], cmd)
-			if err != nil {
-				return err
+			var out strings.Builder
+			var errs []string
+			for _, ref := range args {
+				result, err := Open(cmd.Context(), flags, ref, cmd)
+				if err != nil {
+					errs = append(errs, fmt.Sprintf("%s: %v", ref, err))
+					continue
+				}
+				out.WriteString(result)
 			}
-			fmt.Fprint(cmd.OutOrStdout(), result)
+			if out.Len() > 0 {
+				fmt.Fprint(cmd.OutOrStdout(), out.String())
+			}
+			if len(errs) > 0 {
+				return fmt.Errorf("%s", strings.Join(errs, "\n"))
+			}
 			return nil
 		},
 	}
