@@ -93,12 +93,13 @@ Body must be non-empty; empty body is a hard error.
 
 Moves an issue to a new status via a workflow transition.
 
-    jiracli edit status <KEY> <name-or-id> [--comment <text>] [--yes] [--profile <name>]
+    jiracli edit status <KEY> [KEY...] <name-or-id> [--field key=value]... [--comment <text>] [--yes] [--profile <name>]
 
 ### Flags
 
 | Flag | Description |
 |---|---|
+| `--field key=value` | Pass a transition screen field. Repeatable. See coercion table below. |
 | `--comment <text>` | Post a comment atomically with the transition |
 | `--yes` | Apply without confirmation |
 | `--profile <name>` | Credential profile |
@@ -106,26 +107,95 @@ Moves an issue to a new status via a workflow transition.
 ### Name-or-id resolution
 
 - **Numeric id**: used directly without lookup.
-- **Name string**: fetches `GET /issue/<KEY>/transitions`, matches case-insensitively and exactly. Multiple matches → error listing all candidates.
+- **Name string**: fetches `GET /issue/<KEY>/transitions?expand=transitions.fields`, matches case-insensitively and exactly. Multiple matches → error listing all candidates.
+
+### Transition screen fields (`--field`)
+
+Some workflow transitions have required fields on their screen (e.g. `resolution`, `assignee`). Pass them with `--field`:
+
+    jiracli edit status ACME-123 Closed --field resolution=Completed --field assignee=alice --yes
+
+Only the `=` operator is supported (no `+=`/`-=`). Well-known fields are coerced automatically:
+
+| Field name | Coercion | Example |
+|---|---|---|
+| `resolution` | `{"name": value}` | `--field resolution=Completed` |
+| `assignee` | `{"name": value}` | `--field assignee=alice` |
+| `reporter` | `{"name": value}` | `--field reporter=bob` |
+| `priority` | `{"name": value}` | `--field priority=High` |
+| `fixVersions`, `versions` | `[{"name": value}]` (accumulates across multiple `--field` occurrences) | `--field fixVersions=Future` |
+| any other field | raw string | `--field customfield_10100=myvalue` |
+
+### Pre-flight validation
+
+Before prompting to apply, jiracli cross-references the fields you supplied against the transition's screen schema (`expand=transitions.fields`). Required fields that are not yet provided appear as `⚠` rows in the dry-run preview:
+
+```
+DRY RUN — no changes made.
+
+POST https://jira.example.com/rest/api/2/issue/ACME-123/transitions
+
+Body:
+  {
+    "fields": {
+      "resolution": {"name": "Completed"}
+    },
+    "transition": {"id": "61"}
+  }
+
+Effect:
+  ACME-123: In Progress → Closed
+
+Validation:
+  ✓ transition 61 "Closed" is available on ACME-123
+  ✓ In Progress → Closed
+  ✓ field: Resolution = map[name:Completed]
+  ⚠ required field "assignee" (Assignee) not provided
+
+Apply? [y/N]:
+```
+
+### Corrective error on 400
+
+If the transition is rejected by Jira (HTTP 400 — missing or invalid field), jiracli:
+
+1. Surfaces Jira's own per-field error messages verbatim.
+2. Lists every required field on that transition screen that was not provided, with allowed values where available.
+3. Prints a ready-to-copy corrected command.
+
+```
+transition "Closed" on ACME-123 was rejected by Jira:
+  ✗ resolution: The selected resolution cannot be chosen during this action.
+
+Required transition screen fields not yet provided:
+  --field assignee=<value>   (Assignee)
+  --field resolution=<value>   (Resolution)
+    Allowed: Completed, Won't Fix, By Design, Duplicate, Cannot Reproduce, Canceled
+
+Run: jiracli edit status ACME-123 "Closed" --field assignee=<value> --field resolution="Completed" --yes
+[exit:1 | Xms]
+```
+
+When all required fields were provided but the transition still fails (e.g. wrong value), the error lists all screen fields with their `*`-marked required ones instead.
 
 ### Preview effect line
 
-    ACME-123: In Progress → Done
+    ACME-123: In Progress → Closed
 
 ### Success output
 
-    ✓ transitioned ACME-123: In Progress → Done
+    ✓ transitioned ACME-123: In Progress → Closed
       → jiracli show ACME-123
 
-### Errors
+### Errors — transition not found
 
 ```
-no transition matching "dun" on ACME-123.
-        Available transitions:
-          21  In Review
-          31  Done
-          51  Block
-        List:    jiracli show transitions ACME-123
+no transition "dun" on ACME-123 (current: In Progress)
+Available transitions:
+  21      In Review
+  31      Done
+  51      Blocked
+Run: jiracli edit status ACME-123 <id>
 [exit:1 | Xms]
 ```
 
@@ -133,10 +203,11 @@ no transition matching "dun" on ACME-123.
 
     jiracli edit status ACME-123 ACME-124 ACME-125 Done
     jiracli edit status ACME-123 ACME-124 ACME-125 Done --yes
+    jiracli edit status ACME-123 ACME-124 Closed --field resolution=Completed --field assignee=alice --yes
 
 The last argument is always the transition name or numeric ID. All preceding arguments are issue keys.
 
-With multiple keys, the preview lists every planned operation:
+With multiple keys, the preview lists every planned operation. When `--field` is used, a Fields block is shown below the key table:
 
 ```
 transition 3 issue(s) → Done
@@ -145,10 +216,14 @@ transition 3 issue(s) → Done
   ACME-124         In Review → Done
   ACME-125         To Do → Done
 
+Fields:
+  resolution = map[name:Completed]
+  assignee = map[name:alice]
+
 Apply with: re-run with --yes
 ```
 
-Transition resolution failures (transition not available on a key) are listed in a "Skipped" block and do not block the rest of the batch. Execution is sequential; per-key errors are collected and reported at the end rather than aborting.
+Transition resolution failures (transition not available on a key) are listed in a "Skipped" block and do not block the rest of the batch. Execution is sequential; per-key errors are collected and reported at the end rather than aborting. Each failing key gets its own corrective error block.
 
 ---
 
