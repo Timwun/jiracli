@@ -205,8 +205,6 @@ func FieldSet(ctx context.Context, flags fieldSetFlags, key string, tokens []str
 	// Mixed or non-epic path: use nonEpicSpecs for the PUT.
 	specs = nonEpicSpecs
 
-
-
 	for _, spec := range specs {
 		fieldName := spec.Name
 		value := spec.Raw
@@ -395,7 +393,6 @@ func FieldSet(ctx context.Context, flags fieldSetFlags, key string, tokens []str
 			Message: fmt.Sprintf("epic %s (linked via Agile API after PUT)", epicValue),
 		})
 	}
-
 
 	// Assemble PUT body.
 	body := map[string]any{}

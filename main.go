@@ -181,6 +181,12 @@ func buildRoot(stdout, stderr io.Writer) *cobra.Command {
 	effortCmd.GroupID = "main"
 	root.AddCommand(effortCmd)
 
+	// worklog — read-only worklog queries and summaries.
+	worklogCmd := jiracmd.NewWorklogCmd()
+	wrapGroup(worklogCmd)
+	worklogCmd.GroupID = "main"
+	root.AddCommand(worklogCmd)
+
 	// create — new issue.
 	createCmd := jiracmd.NewCreateCmd()
 	WrapWithPresenter(createCmd, stdout, stderr)

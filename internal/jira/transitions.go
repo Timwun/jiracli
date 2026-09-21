@@ -11,8 +11,8 @@ import (
 // TransitionFieldMeta describes one field on a transition screen, as returned
 // when the caller passes expand=transitions.fields.
 type TransitionFieldMeta struct {
-	Required      bool     `json:"required"`
-	Name          string   `json:"name"`
+	Required      bool   `json:"required"`
+	Name          string `json:"name"`
 	AllowedValues []struct {
 		ID    string `json:"id"`
 		Name  string `json:"name"`

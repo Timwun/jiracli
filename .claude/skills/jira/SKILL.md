@@ -40,6 +40,20 @@ jiracli open PROJ-123 --print-url          # get the browse URL without opening 
 ```
 Run `jiracli show --help` for all flags and subcommands (`--no-history`, `--no-comments`, `--fields`, and more).
 
+### Worklogs
+
+Use the dedicated worklog commands for “when did I log time?” or “how much time was worked?” questions; do not infer entry time from issue `timespent` or JQL issue dates:
+
+```sh
+jiracli worklog latest                         # default: me, created (entry time)
+jiracli worklog latest --date-field started    # newest work date
+jiracli worklog list --since 4w                # rolling 28-day work-date list
+jiracli worklog summary --since 4w --group-by issue
+jiracli show worklogs PROJ-123 --author me
+```
+
+`--since`/`--until` are inclusive and accept RFC3339, UTC dates, or positive `Nw`/`Nd`/`Nh`; date-only upper bounds include the entire UTC day. Top-level commands default to the authenticated user. `show worklogs` defaults to all visible authors. Narrow broad queries with `--issue`, `--project`, or dates; pass `--all-issues` only to bypass the 500-candidate issue cap. Grouped summaries render issue/project/day/week tables with entry and time totals. Use `--json` for stable NDJSON; rely on `timeSpentSeconds` for arithmetic and `timeSpent` for display.
+
 **`show KEY1 KEY2 … KEY-N` is serial and slow.** Each key is a separate API call. For status-only lookups across many keys, prefer a single `search` call instead — it is one round-trip regardless of result count:
 ```sh
 # Slow — N serial API calls

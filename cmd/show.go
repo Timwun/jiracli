@@ -48,6 +48,7 @@ Subcommands drill into a specific facet by plain key:
   show history ACME-123           changelog
   show transitions ACME-123       available workflow transitions
   show attachments ACME-123       attachment list
+  show worklogs ACME-123          worklog entries
   show assigned                   issues assigned to the current user
 
 Common flags (on the default issue view):
@@ -55,7 +56,8 @@ Common flags (on the default issue view):
   --fields <spec>         Add/drop fields. Syntax: "name" or "+name" to add,
                           "-name" to drop. Standard names: reporter, description,
                           labels, components, fixVersions, resolution, duedate,
-                          timeestimate, timespent. Any Jira field ID accepted.
+                          timeestimate, timespent, worklog. Worklog entries are
+                          omitted from this bounded issue view; use show worklogs.
   --fields-only <list>    Restrict to exactly this comma-separated list
                           (replaces defaults; mutex with --fields)
   --no-history            Omit activity/changelog section
@@ -166,8 +168,8 @@ Use 'jiracli show history <KEY> --since 7d' for the full paginated changelog.`,
 	root.Flags().BoolVar(&issueFlags.NoHistory, "no-history", false, "Skip activity/changelog section")
 	root.Flags().BoolVar(&issueFlags.NoComments, "no-comments", false, "Skip comments section")
 	root.Flags().StringVar(&issueFlags.Fields, "fields", "", "Add/drop fields: \"name\" or \"+name\" to add, \"-name\" to drop. "+
-		"Standard names: reporter, description, labels, components, fixVersions, resolution, duedate, timeestimate, timespent. "+
-		"Any Jira field ID accepted. Run jiracli show --help for full reference.")
+		"Standard names: reporter, description, labels, components, fixVersions, resolution, duedate, timeestimate, timeoriginalestimate, timespent, worklog. "+
+		"Worklog entries are omitted here; use show worklogs. Any Jira field ID accepted. Run jiracli show --help for full reference.")
 	root.Flags().StringVar(&issueFlags.FieldsOnly, "fields-only", "", "Restrict to exactly this comma-separated list (replaces defaults; mutex with --fields)")
 	root.Flags().BoolVar(&issueFlags.NoChildren, "no-children", false, "Skip fetching the children list (one fewer API call)")
 	root.Flags().BoolVar(&issueFlags.Parent, "parent", false, "Show the parent of <KEY> instead (Parent Link → Parent → Epic Link, in that order)")
@@ -187,6 +189,7 @@ Use 'jiracli show history <KEY> --since 7d' for the full paginated changelog.`,
 		NewHistoryCmd(),
 		NewTransitionsCmd(),
 		NewAttachmentsCmd(),
+		NewShowWorklogsCmd(),
 		NewAssignedCmd(),
 	)
 	return root

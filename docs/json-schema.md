@@ -107,7 +107,8 @@ One record per invocation. Produced by `internal/jira.IssueRecord` (`internal/ji
   "extraFields": [
     {"id": "environment", "label": "Env", "value": "PROD_CHANGE"}
   ],
-  "unknownFields": ["ünïcödé"]
+  "unknownFields": ["ünïcödé"],
+  "warnings": ["worklog entries omitted — run: jiracli show worklogs ACME-123"]
 }
 ```
 
@@ -624,3 +625,57 @@ The `sprints` field on `IssueRecord` and `SearchIssueRecord` is an array of `Spr
 |`endDate`|string|ISO-8601; omitted when not set|
 
 The array is omitted (`omitempty`) when the issue has no sprint data or the sprint custom field is not configured.
+
+---
+
+## worklog
+
+Commands:
+
+- `jiracli worklog latest [--json]` — one record, default ordering field `created`.
+- `jiracli worklog list [--json]` — paginated records, default ordering field `started`.
+- `jiracli show worklogs <KEY> [--json]` — issue-scoped paginated records; omitted author means all visible authors.
+
+Each worklog data line has this additive schema:
+
+```json
+{
+  "id": "10001",
+  "issueId": "10020",
+  "issueKey": "ACME-123",
+  "issueSummary": "Fix login redirect",
+  "author": {"name": "u1", "displayName": "Alex Chen"},
+  "updateAuthor": {"name": "u1", "displayName": "Alex Chen"},
+  "comment": "Investigated timeout",
+  "started": "2026-06-24T08:00:00.000+0000",
+  "created": "2026-06-24T09:00:00.000+0000",
+  "updated": "2026-06-24T09:00:00.000+0000",
+  "timeSpent": "1h",
+  "timeSpentSeconds": 3600
+}
+```
+
+`--date-field` selects `started`, `created`, or `updated` for filtering and ordering. `list` and `show` emit `_pagination` with `page`, `pages`, `total`, `next_page`, and `has_more` when more records remain. No trailer is emitted on the last page.
+
+## worklog summary
+
+`jiracli worklog summary [--json]` emits one object. It contains the stable author username in `author`, the human-readable name in additive `authorDisplayName`, `dateField`, optional effective `since`/`until` RFC3339 bounds, `entryCount`, `timeSpent`, and `timeSpentSeconds`; `--group-by day|week|issue|project` adds `groupBy` and a `groups` array with `group`, `entryCount`, `timeSpent`, and `timeSpentSeconds`. A grouped summary with no matches emits `"groups":[]`; without `--group-by`, the field is omitted. Issue groups use issue keys rather than summaries. Group day/week timestamps are normalized to UTC and weeks begin Monday. Aggregate display durations use Jira's default five-day, eight-hour work week, while `timeSpentSeconds` remains canonical. A zero total is represented as `"timeSpent":"0h"` and `"timeSpentSeconds":0`.
+
+```json
+{
+  "author": "achen",
+  "authorDisplayName": "Alex Chen",
+  "dateField": "started",
+  "since": "2026-08-24T12:00:00Z",
+  "entryCount": 6,
+  "timeSpent": "3w",
+  "timeSpentSeconds": 432000,
+  "groupBy": "issue",
+  "groups": [
+    {"group": "ACME-123", "entryCount": 4, "timeSpent": "1w", "timeSpentSeconds": 144000},
+    {"group": "ACME-124", "entryCount": 2, "timeSpent": "2w", "timeSpentSeconds": 288000}
+  ]
+}
+```
+
+Issue records never embed worklog entries. A positive `worklog` request through `show --fields`/`--fields-only` succeeds with the additive `warnings` array containing `worklog entries omitted — run: jiracli show worklogs <KEY>`; plain output adds the matching redirect warning. The conditional issue drill-down is based on already-fetched positive `timetracking.timeSpentSeconds` and makes no worklog request.

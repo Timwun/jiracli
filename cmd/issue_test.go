@@ -154,10 +154,10 @@ func TestRenderIssue_ComponentsLabelsTwoColumn(t *testing.T) {
 func TestCollectExtraFields_GenericFieldRendering(t *testing.T) {
 	raw := jira.IssueRaw{
 		RawFields: map[string]json.RawMessage{
-			"environment":       json.RawMessage(`"PROD_CHANGE"`),
-			"duedate":           json.RawMessage(`"2024-01-11"`),
-			"customfield_10014": json.RawMessage(`"ACME-1"`), // epic link, excluded via hf
-			"customfield_99999": json.RawMessage(`"custom value"`),
+			"environment":        json.RawMessage(`"PROD_CHANGE"`),
+			"duedate":            json.RawMessage(`"2024-01-11"`),
+			"customfield_10014":  json.RawMessage(`"ACME-1"`), // epic link, excluded via hf
+			"customfield_99999":  json.RawMessage(`"custom value"`),
 			"customfield_absent": json.RawMessage(`null`),
 		},
 	}
@@ -185,5 +185,51 @@ func TestCollectExtraFields_GenericFieldRendering(t *testing.T) {
 		if fv.Label == "" {
 			t.Errorf("field %q has empty label", fv.ID)
 		}
+	}
+}
+
+func TestIssueWorklogFieldSuppression(t *testing.T) {
+	got, warn := stripWorklogFields("summary,+worklog,-priority", false)
+	if got != "summary,-priority" || !warn {
+		t.Fatalf("fields suppression = %q warn=%v", got, warn)
+	}
+	got, warn = stripWorklogFields("worklog", true)
+	if got != "" || !warn {
+		t.Fatalf("fields-only suppression = %q warn=%v", got, warn)
+	}
+	got, warn = stripWorklogFields("-worklog", false)
+	if got != "" || warn {
+		t.Fatalf("negative worklog suppression = %q warn=%v", got, warn)
+	}
+	got, warn = stripWorklogFields("worklog,-worklog", false)
+	if got != "" || warn {
+		t.Fatalf("final negative worklog selection = %q warn=%v", got, warn)
+	}
+	got, warn = stripWorklogFields("-worklog,+worklog", false)
+	if got != "" || !warn {
+		t.Fatalf("final positive worklog selection = %q warn=%v", got, warn)
+	}
+}
+
+func TestRenderIssueWorklogDrilldownConditional(t *testing.T) {
+	rec := jira.IssueRecord{Key: "CAR-1", Summary: "s", IssueType: "Task", Status: "Open", TimeTracking: &jira.TimeTrackingRecord{TimeSpentSeconds: 3600}}
+	if out := renderIssue(rec, IssueFlags{}, map[string]bool{"timetracking": true}, ""); !strings.Contains(out, "jiracli show worklogs") {
+		t.Fatal("positive time should advertise worklog drilldown")
+	}
+	rec.TimeTracking.TimeSpentSeconds = 0
+	if out := renderIssue(rec, IssueFlags{}, map[string]bool{"timetracking": true}, ""); strings.Contains(out, "jiracli show worklogs") {
+		t.Fatal("zero time should not advertise worklog drilldown")
+	}
+	rec.TimeTracking.TimeSpentSeconds = 3600
+	if out := renderIssue(rec, IssueFlags{}, map[string]bool{}, ""); strings.Contains(out, "jiracli show worklogs") {
+		t.Fatal("excluded timetracking should not advertise worklog drilldown")
+	}
+}
+
+func TestIssueWorklogWarningJSON(t *testing.T) {
+	rec := jira.IssueRecord{Key: "CAR-1", Warnings: []string{"worklog entries omitted — run: jiracli show worklogs CAR-1"}}
+	b, err := json.Marshal(rec)
+	if err != nil || !strings.Contains(string(b), `"warnings":[`) || !strings.Contains(string(b), "show worklogs CAR-1") {
+		t.Fatalf("warnings JSON = %s err=%v", b, err)
 	}
 }

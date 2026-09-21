@@ -45,11 +45,14 @@ Fields reference (--fields / --fields-only):
   Exact set:      --fields-only "key,summary,description"
   Standard names: reporter, assignee, description, labels, components,
                   fixVersions, resolution, duedate, created, updated,
-                  timeestimate, timeoriginalestimate, timespent
+                  timeestimate, timeoriginalestimate, timespent, worklog
+  Worklog is a collection facet: requesting it succeeds but omits embedded
+  entries and redirects to jiracli show worklogs <KEY> for complete data.
   Any Jira field ID is also accepted (e.g. customfield_10031), including
   built-in fields with no dedicated section (e.g. environment) — these
   render generically as "Label: value" using the field's own display name.
-  Use jiracli lookup fields to list all available field IDs.`,
+  Use jiracli lookup fields to list all available field IDs.
+		`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			result, err := Issue(cmd.Context(), flags, args[0])
@@ -105,19 +108,29 @@ func Issue(ctx context.Context, flags IssueFlags, ref string) (string, error) {
 		flags.Parent = false // prevent infinite recursion
 	}
 
-	// Build field list and optional restriction set for --fields-only.
 	if flags.FieldsOnly != "" && flags.Fields != "" {
 		return "", fmt.Errorf("--fields and --fields-only are mutually exclusive — choose one")
+	}
+
+	fieldsOnlyRequested := flags.FieldsOnly != ""
+	worklogRequested := false
+	if fieldsOnlyRequested {
+		flags.FieldsOnly, worklogRequested = stripWorklogFields(flags.FieldsOnly, true)
+	} else if flags.Fields != "" {
+		flags.Fields, worklogRequested = stripWorklogFields(flags.Fields, false)
 	}
 
 	fields := jira.DefaultIssueFields
 	var fieldSet map[string]bool // nil = full default set; non-nil only with --fields-only
 	var unknownFields []string   // typo'd/garbage field names from --fields or --fields-only
-	if flags.FieldsOnly != "" {
+	if fieldsOnlyRequested {
 		fields = flags.FieldsOnly
 		fieldSet = make(map[string]bool)
 		for _, f := range strings.Split(flags.FieldsOnly, ",") {
-			fieldSet[strings.TrimSpace(f)] = true
+			f = strings.TrimSpace(f)
+			if f != "" {
+				fieldSet[f] = true
+			}
 		}
 		unknownFields = unknownFieldTokens(ctx, client, store, jira.DefaultIssueFields, flags.FieldsOnly)
 	} else {
@@ -138,6 +151,10 @@ func Issue(ctx context.Context, flags IssueFlags, ref string) (string, error) {
 			}
 			fields += "," + fid
 		}
+	}
+	if strings.TrimSpace(fields) == "" {
+		fields = "key,summary"
+		fieldSet = map[string]bool{"key": true, "summary": true}
 	}
 
 	raw, err := client.GetIssue(ctx, parsed.Key, fields, !flags.NoHistory)
@@ -162,6 +179,9 @@ func Issue(ctx context.Context, flags IssueFlags, ref string) (string, error) {
 	rec := jira.ToIssueRecord(raw, commentsN, hf)
 	rec.UnknownFields = unknownFields
 	rec.ExtraFields = collectExtraFields(raw, fields, hf)
+	if worklogRequested {
+		rec.Warnings = []string{"worklog entries omitted — run: jiracli show worklogs " + parsed.Key}
+	}
 
 	// All four enrichment calls are independent — run them concurrently.
 	// Each goroutine writes a disjoint field of rec; WaitGroup provides the barrier.
@@ -247,7 +267,32 @@ func Issue(ctx context.Context, flags IssueFlags, ref string) (string, error) {
 	if len(unknownFields) > 0 {
 		output += unknownFieldsWarning(unknownFields)
 	}
+	if worklogRequested {
+		output += "\n⚠ worklog entries omitted — run: jiracli show worklogs " + parsed.Key + "\n"
+	}
 	return output, nil
+}
+
+func stripWorklogFields(spec string, fieldsOnly bool) (string, bool) {
+	var kept []string
+	requested := false
+	for _, token := range strings.Split(spec, ",") {
+		token = strings.TrimSpace(token)
+		if token == "" {
+			continue
+		}
+		name := strings.TrimPrefix(strings.TrimPrefix(token, "+"), "-")
+		if strings.EqualFold(name, "worklog") {
+			if fieldsOnly {
+				requested = requested || !strings.HasPrefix(token, "-")
+			} else {
+				requested = !strings.HasPrefix(token, "-")
+			}
+			continue
+		}
+		kept = append(kept, token)
+	}
+	return strings.Join(kept, ","), requested
 }
 
 // unknownFieldsWarning formats a corrective note for --fields/--fields-only
@@ -894,6 +939,9 @@ func renderIssue(rec jira.IssueRecord, flags IssueFlags, fieldSet map[string]boo
 	fmt.Fprintf(&sb, "  → jiracli show history      %s\n", rec.Key)
 	fmt.Fprintf(&sb, "  → jiracli show transitions  %s\n", rec.Key)
 	fmt.Fprintf(&sb, "  → jiracli hierarchy         %s\n", rec.Key)
+	if fieldIn(fieldSet, "timetracking") && rec.TimeTracking != nil && rec.TimeTracking.TimeSpentSeconds > 0 {
+		fmt.Fprintf(&sb, "  → jiracli show worklogs    %s\n", rec.Key)
+	}
 	// Advertise `effort` only when it would actually find something to roll
 	// up: portfolio-level items (Initiative/Feature/Program/Theme) always
 	// roll up via the parent-link field, but an Epic is only worth it once

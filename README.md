@@ -29,7 +29,7 @@ Drill in:
   → jiracli show comments     PROJ-1234
   → jiracli show history      PROJ-1234
   → jiracli show transitions  PROJ-1234
-
+  → jiracli show worklogs     PROJ-1234   # shown when positive time is fetched
 [exit:0 | 312ms]
 ```
 
@@ -117,6 +117,33 @@ jiracli show transitions PROJ-123              # what statuses are available nex
 jiracli show attachments PROJ-123              # list attachments
 jiracli show PROJ-123:attach:10042 -o          # stream attachment to stdout
 ```
+
+### Worklogs
+
+Worklog reads use complete issue worklogs rather than issue `timespent` aggregates:
+
+```sh
+jiracli worklog latest                         # newest entry by entered time (created)
+jiracli worklog list --since 4w                # entries by work date (started), rolling 28 days
+jiracli worklog summary --since 4w --group-by issue
+jiracli show worklogs PROJ-123 --author me     # issue-scoped entries
+```
+
+Grouped summaries render as an aligned table with entry counts and aggregate Jira durations:
+
+```text
+Worklog summary for Alex Chen
+Period:   2026-08-24 → 2026-09-21 (rolling 28 days)
+Based on: work date
+
+Issue       Entries  Time
+ACME-123          4    1w
+ACME-124          2    2w
+─────────────────────────
+Total             6    3w
+```
+
+`--since` and `--until` are inclusive; timestamps can be RFC3339, a UTC date, or positive `Nw`, `Nd`, and `Nh` values. Top-level commands default to the authenticated user; `show worklogs` defaults to all visible authors. Use `--issue` or `--project` to narrow a top-level command, and `--all-issues` to bypass the 500-candidate issue safety cap. `--json` emits worklog records or one summary object as NDJSON; aggregate seconds remain available alongside human-readable durations. `show` advertises `show worklogs <KEY>` only when fetched time tracking reports positive spent time. Requesting `worklog` through `show --fields` or `--fields-only` succeeds, embeds no worklog entries, and emits a redirect warning.
 
 ### Searching
 
@@ -245,7 +272,6 @@ Metadata is cached at `~/.cache/jiracli/<profile>/` (5 min for labels, 1 h for c
 ---
 
 ## Multiple profiles
-
 ```sh
 jiracli auth login --profile staging --url https://jira-staging.example.com
 jiracli show PROJ-123 --profile staging
@@ -258,7 +284,7 @@ jiracli auth profile --list
 | Reference | Location |
 |---|---|
 | Setup & auth | [`docs/setup-auth.md`](docs/setup-auth.md) |
-| Read commands (`show`, `search`) | [`docs/reads.md`](docs/reads.md) |
+| Read commands (`show`, `search`, `worklog`) | [`docs/reads.md`](docs/reads.md) |
 | Hierarchy (`hierarchy`) | [`docs/hierarchy.md`](docs/hierarchy.md) |
 | Effort rollup (`effort`) | [`docs/effort.md`](docs/effort.md) |
 | Write commands (`edit`, `add`, `create`) | [`docs/writes.md`](docs/writes.md) |

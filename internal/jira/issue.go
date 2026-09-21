@@ -365,6 +365,7 @@ type IssueRecord struct {
 	Sprints          []SprintRef         `json:"sprints,omitempty"`
 	ExtraFields      []FieldValue        `json:"extraFields,omitempty"`
 	UnknownFields    []string            `json:"unknownFields,omitempty"`
+	Warnings         []string            `json:"warnings,omitempty"`
 }
 
 // FieldValue is a generic (field id/name, label, display value) triple used

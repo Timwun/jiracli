@@ -1,6 +1,6 @@
 # jiracli — Read Commands
 
-Reference for: `issue`, `search`, `assigned`, `comments`, `history`, `transitions`, `attachments`, `attachment download`, `open`. For `hierarchy` and `effort`, see their dedicated pages: [hierarchy.md](hierarchy.md), [effort.md](effort.md).
+Reference for: `issue`, `search`, `assigned`, `comments`, `history`, `transitions`, `attachments`, `attachment download`, `open`, `worklog latest`, `worklog list`, `worklog summary`, and `show worklogs`. For `hierarchy` and `effort`, see their dedicated pages: [hierarchy.md](hierarchy.md), [effort.md](effort.md).
 
 All read commands accept `--profile <name>` and `--json`. Paginated commands accept `--limit` and `--page`.
 
@@ -44,7 +44,7 @@ Fetches a single issue with inline latest comment and changelog.
 
 ### API call
 
-`GET /rest/api/2/issue/<KEY>?fields=key,summary,status,assignee,reporter,description,labels,components,priority,issuetype,created,updated,comment,fixVersions,parent,issuelinks,attachment,resolution&expand=changelog`
+`GET /rest/api/2/issue/<KEY>?fields=key,summary,status,assignee,reporter,description,labels,components,priority,issuetype,created,updated,comment,fixVersions,parent,issuelinks,attachment,resolution,timetracking&expand=changelog`
 
 Never uses `fields=*all` or `expand=renderedFields`.
 
@@ -79,6 +79,7 @@ Field names match Jira's own field IDs. Standard names usable with `--fields`:
 | `timeoriginalestimate` | `Estimate` | Add with `timeoriginalestimate` |
 | `timespent` | `Spent` | Add with `timespent` |
 | `timetracking` | `Estimates:` block | **Fetched by default.** Shows `Planned / Remaining / Spent` + progress bar when non-zero. |
+| `worklog` | — | Collection facet; entries are not embedded. Emits a warning directing callers to `show worklogs <KEY>`. |
 | Story Points field ID | `Story Points:` | Fetched and displayed when discovered at setup (run `jiracli config hierarchy --json` to see `storyPointsField`). |
 | `sprint` | `Sprint:` block | Add with `sprint`. Shows all sprints on the issue. Requires sprint field to be configured (`jiracli config agile`). |
 | `customfield_XXXXX` | raw ID | Any custom field ID from `jiracli lookup fields` |
@@ -968,9 +969,40 @@ Per-ref errors (invalid ref, not found) are collected; successfully resolved ref
 
 ### Pagination and overflow
 
-All paginated commands (`search`, `comments`, `history`, `assigned`) emit a footer:
+All paginated commands (`search`, `comments`, `history`, `assigned`, `worklog list`, `show worklogs`) emit a footer:
 
 - More pages exist: `--- page M of N | next: jiracli <cmd> --page <M+1> [flags] "<args>" ---`
 - Last page: `--- page M of N ---`
 
 Outputs exceeding ~200 lines or ~50 KB are truncated; the full content is written to `<tmpdir>/jiracli-output/output-N.txt`, where `<tmpdir>` is the OS temp directory — `/tmp` on Linux, but a per-user `$TMPDIR` path on macOS (not `/tmp`). The truncated output includes hints with the actual resolved path to use `grep`, `head`, or `tail` on that file.
+
+---
+
+## Worklogs
+
+Worklogs are read from `GET /rest/api/2/issue/<KEY>/worklog`, with pagination and duplicate/no-progress protection. The client collects complete visible entries even when Jira ignores `maxResults`; it never substitutes issue `timespent`.
+
+```sh
+jiracli worklog latest [--author me] [--date-field created]
+jiracli worklog list --since 4w [--date-field started] [--sort desc] [--limit 50] [--page 1]
+jiracli worklog summary --since 4w [--group-by day|week|issue|project]
+jiracli show worklogs ACME-123 [--author me]
+```
+
+`latest` defaults to `--author me` and `--date-field created`; it answers when time was entered. `list` and `summary` default to `--author me` and `--date-field started`; they answer when work was performed. `show worklogs` defaults to all visible authors and `started`. All commands accept `--since` and `--until` as inclusive RFC3339 instants, UTC dates, or rolling positive `Nw`, `Nd`, and `Nh` values (`4w` is exactly 28×24 hours). A date-only `--until` includes the full UTC day. `--issue` and `--project` are mutually exclusive; top-level searches stop above 500 candidate issues unless `--all-issues` is passed. `--all-issues` does not disable result pagination.
+
+The selected timestamp is stated in plain output. Grouped summaries render an aligned table with one row per UTC day, Monday-based week, issue key, or project key, followed by an entry-count and time total. Summary durations use Jira's default five-day, eight-hour work week (`1w` = 40 hours). `--json` returns stable worklog records with `id`, `issueId`, `issueKey`, optional `issueSummary`, `author`, `updateAuthor`, `comment`, `started`, `created`, `updated`, `timeSpent`, and `timeSpentSeconds`. `list` and `show` append the standard `_pagination` trailer when another page exists. `summary --json` consumes all filtered entries and returns one aggregate with canonical seconds plus display durations; zero duration is rendered as `0h`.
+
+```text
+Worklog summary for Alex Chen
+Period:   2026-08-24 → 2026-09-21 (rolling 28 days)
+Based on: work date
+
+Issue       Entries  Time
+ACME-123          4    1w
+ACME-124          2    2w
+─────────────────────────
+Total             6    3w
+```
+
+The issue view does not embed unbounded worklogs. When `timetracking.timeSpentSeconds` is positive it includes `→ jiracli show worklogs <KEY>` without another request. A positive `worklog` token in `--fields`, or a positive `worklog` token in `--fields-only`, is removed from the Jira field request and succeeds with `⚠ worklog entries omitted — run: jiracli show worklogs <KEY>`; `-worklog` is a no-op. JSON issue records carry the additive `warnings` array instead of the plain warning.

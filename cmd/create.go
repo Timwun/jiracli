@@ -24,7 +24,7 @@ type CreateFlags struct {
 	Description string
 	Priority    string
 	Assignee    string
-	Epic        string   // epic key; issue linked after create via Agile API
+	Epic        string // epic key; issue linked after create via Agile API
 	Components  []string
 	Labels      []string
 	FixVersions []string

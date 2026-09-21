@@ -65,3 +65,24 @@ func TestRun_MissingRequiredArg_EditStatus(t *testing.T) {
 		t.Errorf("expected full help for bare `edit status`, got:\n%s", out)
 	}
 }
+
+func TestHelpAdvertisesWorklogCommands(t *testing.T) {
+	root := runCapture(t, "--help")
+	if !strings.Contains(root, "worklog") {
+		t.Fatalf("root help missing worklog:\n%s", root)
+	}
+	children := runCapture(t, "worklog")
+	if !strings.Contains(children, "latest") || !strings.Contains(children, "summary") {
+		t.Fatalf("worklog help missing children:\n%s", children)
+	}
+	show := runCapture(t, "show", "--help")
+	if !strings.Contains(show, "show worklogs") {
+		t.Fatalf("show help missing worklogs:\n%s", show)
+	}
+	if !strings.Contains(show, "show transitions") || !strings.Contains(show, "show attachments") {
+		t.Fatalf("show help lost existing subcommands:\n%s", show)
+	}
+	if !strings.Contains(show, "timeoriginalestimate") || !strings.Contains(show, "worklog") {
+		t.Fatalf("show help missing supported fields:\n%s", show)
+	}
+}

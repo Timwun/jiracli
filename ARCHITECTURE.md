@@ -282,15 +282,16 @@ jiracli/
 │   ├── delete_link.go         DeleteLink Layer 1 func — accepts KEY:link:ID ref
 │   ├── delete_issue.go        DeleteIssue Layer 1 func (no cobra command) — --with-subtasks flag
 │   │
-│   ├── edit.go                edit group (status / assignee / field)
-│   ├── transition.go          edit status <KEY> <name-or-id>
-│   ├── assign.go              edit assignee <KEY> <user-or-id>
-│   ├── field.go               edit field <KEY> <spec…>
-│   ├── edit_sprint.go         edit sprint <KEY...> <target>: move issues into sprint or backlog
+│   ├── edit.go                 edit group (status / assignee / field)
+│   ├── transition.go           edit status <KEY> <name-or-id>
+│   ├── assign.go               edit assignee <KEY> <user-or-id>
+│   ├── field.go                edit field <KEY> <spec…>
+│   ├── edit_sprint.go           edit sprint <KEY...> <target>: move issues into sprint or backlog
 │   │
-│   ├── create.go              create issue
-│   ├── effort.go              effort <KEY> (top-level, formerly show rollup) + subcommands `effort jql <query>` / `effort sprint <id>`: aggregate time + SP across hierarchy levels or a JQL/sprint result set (--depth, --all, --limit, --group-by, --exclude-done/--open/--state/--since); totals only. Layer 1: Effort() hierarchy, EffortQuery() jql/sprint
-│   ├── statefilter.go         shared --state/--exclude-done/--open filter resolution (stateCategory, resolveStateFilter) for hierarchy + effort
+│   ├── create.go               create issue
+│   ├── effort.go               effort <KEY> (top-level, formerly show rollup) + subcommands `effort jql <query>` / `effort sprint <id>`: aggregate time + SP across hierarchy levels or a JQL/sprint result set (--depth, --all, --limit, --group-by, --exclude-done/--open/--state/--since); totals only. Layer 1: Effort() hierarchy, EffortQuery() jql/sprint
+│   ├── worklog.go              worklog latest/list/summary and show worklogs <KEY>
+│   ├── statefilter.go           shared --state/--exclude-done/--open filter resolution (stateCategory, resolveStateFilter) for hierarchy + effort
 │   ├── credentials.go         resolveEntry / resolveEntryAndStore — shared credential helpers
 │   ├── lookup.go              lookup command group root + suggestLabels helper
 │   ├── lookup_users.go        lookup users
@@ -394,8 +395,9 @@ Layer 2 presentation.
 | `client.go` | HTTP client (Get/Post/Put/Delete/PostMultipart), `MapStatus`, `rateLimitError`, sentinel errors (`ErrUnauthorized`, `ErrForbidden`, `ErrNotFound`, `ErrRateLimited`, `ErrServer`) |
 | `agile.go` | Agile REST client (`AgileGet`/`AgilePost`/`AgilePut`, `agileURL`), domain types (`Board`, `BoardConfig`, `BoardColumn`, `BoardFilter`, `Sprint` incl. `Sequence` — GreenHopper's board-position/creation-order counter, a sort fallback signal more reliable than ID but not a guarantee, see `docs/boards-sprints.md#sprint-ordering-caveats` —, `AgileConfig`), read methods (`ListBoards`, `ListBoardsCached`, `GetBoardConfig`, `GetBoardConfigCached`, `GetBoardFilter`, `ListSprints`, `ListSprintsCached`, `ListSprintNames`, `HydrateSprintDates`, `BulkBackfillClosedDates` — bounded bulk date backfill for closed sprints via the paged endpoint, tolerating its known under-reporting —, `ListAllSprintsPaged`, `ListSprintsDefaultView`, `ListAllSprintsHydrated`, `GetSprint`, `ListSprintIssues`, `ListBoardIssues`), sprint recency/archive helpers (`parseSprintTime`, `isImmutableClosed`, `loadSprintArchive`/`saveSprintArchive`, `allSprintNames`, `DefaultClosedWindow`), mutation methods (`MoveIssuesToSprint`, `MoveIssuesToBacklog`), `ResolveSprintField`, `ErrBoardNoSprints`, `sprintQueryEnvelope` |
 | `ref.go` | Reference grammar parser (`ACME-123`, `:comment:`, `:attach:`, `:link:`, browse URLs) — `RefIssue`, `RefComment`, `RefAttachment`, `RefLink` |
-| `issue.go` | GetIssue, DeleteIssue, IssueRaw, IssueRecord (incl. `portfolio`, `dueDate`, `extraFields`), HierarchyFieldIDs, FieldValue (generic id/label/value triple for fields with no dedicated renderer), ExtractRawKey, ToIssueRecord (reads ParentLink as Portfolio fallback when primary Portfolio field is empty), ResolveActivityStatusCategories, SprintRef, parseSprintRaw, FormatSprintField (compact one-line sprint rendering for plain `search --fields sprint`) |
+| `issue.go` | GetIssue, DeleteIssue, IssueRaw, IssueRecord (incl. `portfolio`, `dueDate`, `extraFields`, and additive `warnings`), HierarchyFieldIDs, FieldValue (generic id/label/value triple for fields with no dedicated renderer), ExtractRawKey, ToIssueRecord (reads ParentLink as Portfolio fallback when primary Portfolio field is empty), ResolveActivityStatusCategories, SprintRef, parseSprintRaw, FormatSprintField (compact one-line sprint rendering for plain `search --fields sprint`) |
 | `search.go` | Search (POST /search), SearchIssueRecord (incl. Sprints []SprintRef), ToSearchRecord |
+| `worklogs.go` | Worklog transport types and complete `GetIssueWorklogs` reader with pagination/no-progress protection |
 | `jql.go` | DefaultOpenFilter (statusCategory-based, not status names) |
 | `comments.go` | GetComments, AddComment |
 | `history.go` | GetChangelog (DC 8.7+ dedicated endpoint; falls back to expand=changelog) |

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"strconv"
 	"strings"
 	"time"
 
@@ -73,34 +72,11 @@ type paginationRecord struct {
 // as midnight UTC), or a relative duration like "7d" or "24h".
 // Returns the zero time if the input is empty.
 func parseSince(s string) (time.Time, error) {
-	if s == "" {
-		return time.Time{}, nil
+	t, _, err := parseTimeExpression(s, time.Now())
+	if err != nil {
+		return time.Time{}, fmt.Errorf("invalid --since value %q — use RFC3339, YYYY-MM-DD, or a positive relative value such as 4w, 7d, or 24h", s)
 	}
-	// Try RFC3339 first.
-	if t, err := time.Parse(time.RFC3339, s); err == nil {
-		return t, nil
-	}
-	// Try plain date YYYY-MM-DD (midnight UTC).
-	if t, err := time.Parse("2006-01-02", s); err == nil {
-		return t.UTC(), nil
-	}
-	// Try relative: ends in d (days) or h (hours).
-	if len(s) < 2 {
-		return time.Time{}, fmt.Errorf("invalid --since value %q — use RFC3339 (e.g. 2026-01-01T00:00:00Z), a date (e.g. 2026-01-01), or relative (e.g. 7d, 24h)", s)
-	}
-	unit := s[len(s)-1]
-	n, err := strconv.Atoi(s[:len(s)-1])
-	if err != nil || n <= 0 {
-		return time.Time{}, fmt.Errorf("invalid --since value %q — use RFC3339 (e.g. 2026-01-01T00:00:00Z), a date (e.g. 2026-01-01), or relative (e.g. 7d, 24h)", s)
-	}
-	switch unit {
-	case 'd':
-		return time.Now().Add(-time.Duration(n) * 24 * time.Hour), nil
-	case 'h':
-		return time.Now().Add(-time.Duration(n) * time.Hour), nil
-	default:
-		return time.Time{}, fmt.Errorf("invalid --since value %q — use RFC3339 (e.g. 2026-01-01T00:00:00Z), a date (e.g. 2026-01-01), or relative (e.g. 7d, 24h)", s)
-	}
+	return t, nil
 }
 
 // parseJiraTime parses Jira's timestamp format (ISO 8601 with tz offset).
