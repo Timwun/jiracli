@@ -129,6 +129,13 @@ jiracli worklog summary --since 4w --group-by issue
 jiracli show worklogs PROJ-123 --author me     # issue-scoped entries
 ```
 
+To log time, use Jira's configured duration syntax unchanged (`2h`, `30m`, `1d`, etc.). The command previews by default, automatically reduces the remaining estimate by default, and accepts `--adjust-estimate leave` to keep it unchanged. `--started` accepts RFC3339; `--comment` uses Jira Wiki Markup. A successful apply prints a `show worklogs` drill-down.
+
+```sh
+jiracli add worklog PROJ-123 2h --started 2026-09-23T09:00:00Z --comment "Implementation"
+jiracli add worklog PROJ-123 2h --adjust-estimate leave --yes
+```
+
 Grouped summaries render as an aligned table with entry counts and aggregate Jira durations:
 
 ```text
@@ -181,6 +188,7 @@ jiracli edit status   PROJ-123 "In Review"
 jiracli edit assignee PROJ-123 me
 jiracli edit field    PROJ-123 "priority=High" "labels+=regression"
 jiracli add comment   PROJ-123 "Reproduced on v10.5, not v10.6."
+jiracli add worklog  PROJ-123 2h --started 2026-09-23T09:00:00Z --comment "Implementation"
 jiracli add link      PROJ-123 PROJ-456 --type Required
 
 # Apply

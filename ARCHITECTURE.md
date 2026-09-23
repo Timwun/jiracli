@@ -271,10 +271,11 @@ jiracli/
 │   ├── open.go                open <ref>: open issue/comment/attachment in browser
 │   ├── me.go                  auth status (current user)
 │   │
-│   ├── add.go                 add comment / link / attachment (group)
+│   ├── add.go                 add comment / link / attachment / worklog (group)
 │   ├── comment.go             add comment <KEY>
 │   ├── link.go                add link <source> <target>
 │   ├── attach.go              add attachment <KEY> <file…>
+│   ├── worklog_add.go         add worklog <KEY> <time-spent>
 │   │
 │   ├── delete.go              delete <ref>: dispatches by ref shape (issue/comment/attach/link); aliased as "rm"
 │   ├── delete_comment.go      DeleteComment Layer 1 func (no cobra command)
@@ -409,8 +410,7 @@ Layer 2 presentation.
 | `fields.go` | ResolveFieldID, UpdateFields |
 | `fieldspec.go` | ParseFieldSpec, FieldOp (=, +=, -=) |
 | `links.go` | CreateLink, DeleteLink (via `DELETE /issueLink/:id`), AggregateLabelsByProject |
-| `create.go` | CreateIssue |
-| `preview.go` | Preview, ValidationRow, Render, Execute — supports `Method: "DELETE"` (body block suppressed when nil) |
+| `preview.go` | Preview, ValidationRow, Render, Execute — supports `Method: "DELETE"`, optional encoded query parameters, and suppressed body blocks when nil |
 | `render.go` | FormatRelative, WrapAt, FormatBytes, TruncateString, ColWidth, PadRight, IsASCIILetter, RenderWikiMarkup, AbbreviateChange, StatusCategoryRank, CommonRunePrefix, TruncateMidPrefix |
 | `badges.go` | `ColorsEnabled`, `StripAnsi`, `ColorIssueType`, `ColorStatusName`, `Bold`, `Dim` — ANSI badge helpers used by renderers and `internal/output` |
 | `hierarchy.go` | `HierarchyNode`, `HierarchyChain` (incl. `DescendantsTruncated`, `Siblings`/`SiblingsTotal`/`SiblingsTruncated`), `BuildHierarchy` (depth + since + `ChildFilter` params — status filtering is pushed into the children/sibling/descendant JQL server-side, so counts and pagination reflect the filter; inline sub-tasks are filtered client-side via `ChildFilter.KeepCategory`), `fetchChildrenForParents`, `strategyForLevel`, `parentKeyForChild` — ancestor walk (Portfolio → ParentLink → Parent → EpicLink), sibling fetch (co-children of nearest ancestor, injected with `IsSubject`), batched multi-level children fetch, 400 batch-halving retry |

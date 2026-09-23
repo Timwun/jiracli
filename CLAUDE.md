@@ -65,6 +65,7 @@ See `ARCHITECTURE.md` for the full design rationale.
 | `add comment <KEY> <body...>` | `--profile`, `--file`, `--yes` | Add comment (dry-run by default) |
 | `add link <source> <target>` | `--profile`, `--type`, `--yes` | Link two issues |
 | `add attachment <KEY> <file...>` | `--profile`, `--yes` | Upload attachments |
+| `add worklog <KEY> <time-spent>` | `--comment`, `--started`, `--adjust-estimate auto\|leave`, `--profile`, `--yes` | Log a Jira-duration worklog (dry-run by default); `--started` is RFC3339, default estimate adjustment is automatic, and success provides `show worklogs` drill-down |
 | `delete <ref> [ref...]` | `--profile`, `--yes`, `--with-subtasks` | Delete issues (multi-key OK for plain keys), or single comment/attach/link by compound ref. Aliased as `rm`. Dry-run by default. |
 |`create`|`--profile`, `--init-draft`, `--from-draft`, `--project`, `--type`, `--summary`, `--description`, `--priority`, `--assignee`, `--epic`, `--component`, `--label`, `--fix-version`, `--custom`, `--allow-new`, `--skip-field`, `--no-cache`, `--yes`|Create issue; `--epic <KEY>` links the new issue to the given epic after creation via the Agile API, falling back to a direct PUT of the resolved Epic Link field id on a screen-validation 400 (non-fatal — ⚠ warning printed if link fails, created key always shown)|
 

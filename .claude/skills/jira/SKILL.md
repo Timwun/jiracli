@@ -216,6 +216,9 @@ If `sprint current` reports multiple active sprints, pass `--sprint <id>` to pic
 ### Add & delete
 ```sh
 jiracli add comment PROJ-123 "comment text"
+jiracli add worklog PROJ-123 2h --started 2026-09-23T09:00:00Z --comment "Implementation"
+  # duration uses Jira's configured syntax; preview first, then add --yes to apply
+  # --adjust-estimate leave keeps the remaining estimate unchanged
 jiracli add link    PROJ-123 PROJ-456 --type "is related to"
 jiracli delete PROJ-123                    # issue (dry-run; add --yes to apply)
 jiracli delete PROJ-123:comment:9421       # comment — id from jiracli show output
@@ -243,7 +246,7 @@ Run `jiracli add --help` and `jiracli delete --help` for more.
 
 **`effort --group-by` vs `search --count-by`:** use `effort ... --group-by status` when you need time estimates (Planned/Remaining/Spent) broken down by status — via a hierarchy `effort <KEY>` or a result set `effort jql '<query>'`. Use `search --count-by` when you only need counts and percentages and don't need time data. `effort jql` and `search --jql` both take a query; `effort <KEY>` additionally accepts `--depth 2` for two-level breakdowns.
 
-**Descriptions and comments use Jira Wiki Markup, NOT Markdown.** The `--description` and `add comment` fields are rendered by Jira as Wiki Markup. Markdown syntax is silently misrendered — `##` becomes a numbered list heading, `**bold**` may not render, fenced code blocks are ignored. Use Jira Wiki Markup instead:
+**Descriptions, comments, and worklog comments use Jira Wiki Markup, NOT Markdown.** The `--description`, `add comment`, and `add worklog --comment` fields are rendered by Jira as Wiki Markup. Markdown syntax is silently misrendered — `##` becomes a numbered list heading, `**bold**` may not render, fenced code blocks are ignored. Use Jira Wiki Markup instead:
 
 | Intent | Wiki Markup | NOT Markdown |
 |---|---|---|

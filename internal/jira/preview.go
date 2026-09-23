@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strings"
 )
 
@@ -18,6 +19,7 @@ type ValidationRow struct {
 type Preview struct {
 	Method      string          // "POST", "PUT", or "DELETE"
 	Path        string          // path after /rest/api/2 (or /rest/agile/1.0 when Agile==true)
+	Query       url.Values      // query parameters appended to the rendered and executed URL
 	Body        any             // marshalled to JSON for display (nil for DELETE)
 	Description string          // human-readable effect, e.g. "+ 1 comment on ACME-123 by Alex Chen"
 	Validation  []ValidationRow // ✓/⚠/✗ rows
@@ -29,10 +31,14 @@ func (p Preview) Render(baseURL string) string {
 	var sb strings.Builder
 
 	sb.WriteString("DRY RUN — no changes made.\n\n")
+	endpoint := p.Path
+	if len(p.Query) > 0 {
+		endpoint += "?" + p.Query.Encode()
+	}
 	if p.Agile {
-		sb.WriteString(fmt.Sprintf("%s %s/rest/agile/1.0%s\n\n", p.Method, baseURL, p.Path))
+		sb.WriteString(fmt.Sprintf("%s %s/rest/agile/1.0%s\n\n", p.Method, baseURL, endpoint))
 	} else {
-		sb.WriteString(fmt.Sprintf("%s %s/rest/api/2%s\n\n", p.Method, baseURL, p.Path))
+		sb.WriteString(fmt.Sprintf("%s %s/rest/api/2%s\n\n", p.Method, baseURL, endpoint))
 	}
 
 	if p.Body != nil {
@@ -70,7 +76,7 @@ func (p Preview) Execute(ctx context.Context, c *Client) ([]byte, error) {
 		if p.Method != "POST" {
 			return nil, fmt.Errorf("Agile preview only supports POST, got %s", p.Method)
 		}
-		body, status, err := c.AgilePost(ctx, p.Path, nil, bytes.NewReader(raw))
+		body, status, err := c.AgilePost(ctx, p.Path, p.Query, bytes.NewReader(raw))
 		if err != nil {
 			return nil, err
 		}
@@ -81,7 +87,7 @@ func (p Preview) Execute(ctx context.Context, c *Client) ([]byte, error) {
 	}
 	switch p.Method {
 	case "POST":
-		body, status, err := c.Post(ctx, p.Path, nil, bytes.NewReader(raw), "application/json")
+		body, status, err := c.Post(ctx, p.Path, p.Query, bytes.NewReader(raw), "application/json")
 		if err != nil {
 			return nil, err
 		}
@@ -90,7 +96,7 @@ func (p Preview) Execute(ctx context.Context, c *Client) ([]byte, error) {
 		}
 		return body, nil
 	case "DELETE":
-		body, status, err := c.Delete(ctx, p.Path, nil)
+		body, status, err := c.Delete(ctx, p.Path, p.Query)
 		if err != nil {
 			return nil, err
 		}
@@ -99,7 +105,7 @@ func (p Preview) Execute(ctx context.Context, c *Client) ([]byte, error) {
 		}
 		return body, nil
 	default: // PUT
-		body, status, err := c.Put(ctx, p.Path, nil, bytes.NewReader(raw), "application/json")
+		body, status, err := c.Put(ctx, p.Path, p.Query, bytes.NewReader(raw), "application/json")
 		if err != nil {
 			return nil, err
 		}

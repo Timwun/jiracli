@@ -1,6 +1,6 @@
 # jiracli — Write Commands
 
-Reference for: `add comment`, `edit status`, `edit assignee`, `edit field`, `edit sprint`, `create`, `add link`, `add attachment`. For deletes, see [delete.md](delete.md).
+Reference for: `add comment`, `add worklog`, `edit status`, `edit assignee`, `edit field`, `edit sprint`, `create`, `add link`, `add attachment`. For deletes, see [delete.md](delete.md).
 
 All write commands accept `--profile <name>` and `--yes`. Most accept `--no-cache`.
 
@@ -87,7 +87,33 @@ Body must be non-empty; empty body is a hard error.
 - Issue not found: `issue ACME-123 not found — check the key or your PAT may lack browse permission on the project`
 - 401: `PAT in keychain for profile "X" was rejected (HTTP 401) — run: jiracli auth reauth`
 
+## `worklog <KEY> <time-spent>`
+
+Logs time through Jira's Data Center worklog endpoint. The positional duration is sent unchanged, so use the Jira duration syntax configured by the instance (`2h`, `30m`, `1d`, and so on).
+
+    jiracli add worklog <KEY> <time-spent> [--comment <text>] [--started <RFC3339>] [--adjust-estimate auto|leave] [--yes] [--profile <name>]
+
+### Flags and behavior
+
+| Flag | Description |
+|---|---|
+| `--comment <text>` | Optional Jira Wiki Markup comment; use Wiki Markup such as `*bold*`, not Markdown. |
+| `--started <RFC3339>` | Optional work-start instant. Jira receives `2006-01-02T15:04:05.000-0700`; omitted means Jira uses its current start time. |
+| `--adjust-estimate auto\|leave` | Defaults to `auto`, which lets Jira reduce the remaining estimate automatically. `leave` keeps the remaining estimate unchanged. |
+| `--profile <name>` | Credential profile. |
+| `--yes` | Apply without confirmation; without it, the exact request is previewed and no mutation occurs in non-interactive use. |
+
+The preview always includes `adjustEstimate=auto` or `adjustEstimate=leave` in the request URL, the JSON body, issue validation, and an effect line describing the remaining-estimate behavior. `--json` is not supported for this prose write surface.
+
+### Success output
+
+    ✓ logged 2h on ACME-123 (worklog id 10001)
+      → jiracli show worklogs ACME-123
+
+If Jira omits the worklog ID, the parenthesized ID is omitted. Invalid adjustment modes, non-RFC3339 start values, and whitespace-only durations are rejected before the request. Jira validation and authorization errors are surfaced without collapsing them into a generic not-found message.
+
 ---
+
 
 ## `transition <KEY> <name-or-id>`
 

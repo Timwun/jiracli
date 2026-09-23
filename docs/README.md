@@ -14,7 +14,7 @@ Full reference for all commands, flags, output formats, and schemas.
 | [reads.md](reads.md) | `show`, `search`, `assigned`, `comments`, `history`, `transitions`, `attachments`, `open` |
 | [hierarchy.md](hierarchy.md) | `hierarchy` — map an issue up the parent chain and down through descendants |
 | [effort.md](effort.md) | `effort` — roll up time estimates and Story Points across children, a JQL result set, or a sprint |
-| [writes.md](writes.md) | `add comment`, `edit status/assignee/field`, `create`, `add link`, `add attachment` — and the write safety model |
+| [writes.md](writes.md) | `add comment`, `add worklog`, `edit status/assignee/field`, `create`, `add link`, `add attachment` — and the write safety model |
 | [boards-sprints.md](boards-sprints.md) | `board`, `sprint`, `lookup boards`, `edit sprint`, `config agile` — Agile board and sprint commands |
 | [delete.md](delete.md) | `delete comment`, `delete attachment`, `delete link`, `delete issue` |
 | [lookup.md](lookup.md) | `lookup users/labels/components/versions/projects/issue-types/link-types/statuses/priorities/fields` |
@@ -47,6 +47,7 @@ jiracli edit status   PROJ-123 "In Review"
 jiracli edit assignee PROJ-123 me
 jiracli edit field    PROJ-123 "priority=High" "labels+=regression"
 jiracli add comment   PROJ-123 "Looks good."
+jiracli add worklog  PROJ-123 2h --started 2026-09-23T09:00:00Z --comment "Implementation"
 jiracli create --project PROJ --type Bug --summary "..." --assignee me
 ```
 

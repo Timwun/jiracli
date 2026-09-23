@@ -4,9 +4,38 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 )
+
+func TestPreview_RenderAndExecute_Query(t *testing.T) {
+	var gotQuery string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.RawQuery
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"id":"7"}`))
+	}))
+	defer srv.Close()
+
+	c := newTestClient(srv.URL)
+	p := Preview{
+		Method: "POST",
+		Path:   "/issue/ACME-123/worklog",
+		Query:  url.Values{"adjustEstimate": []string{"auto"}},
+		Body:   map[string]string{"timeSpent": "2h"},
+	}
+	preview := p.Render(srv.URL)
+	if !strings.Contains(preview, "/rest/api/2/issue/ACME-123/worklog?adjustEstimate=auto") {
+		t.Fatalf("preview should include encoded query, got:\n%s", preview)
+	}
+	if _, err := p.Execute(context.Background(), c); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if gotQuery != "adjustEstimate=auto" {
+		t.Fatalf("expected query adjustEstimate=auto, got %q", gotQuery)
+	}
+}
 
 func TestPreview_Render_Agile(t *testing.T) {
 	p := Preview{

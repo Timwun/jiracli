@@ -85,4 +85,14 @@ func TestHelpAdvertisesWorklogCommands(t *testing.T) {
 	if !strings.Contains(show, "timeoriginalestimate") || !strings.Contains(show, "worklog") {
 		t.Fatalf("show help missing supported fields:\n%s", show)
 	}
+	add := runCapture(t, "add", "--help")
+	if !strings.Contains(add, "add worklog") {
+		t.Fatalf("add help missing worklog:\n%s", add)
+	}
+	worklogAdd := runCapture(t, "add", "worklog", "--help")
+	for _, flag := range []string{"--comment", "--started", "--adjust-estimate", "--profile", "--yes"} {
+		if !strings.Contains(worklogAdd, flag) {
+			t.Errorf("add worklog help missing %s:\n%s", flag, worklogAdd)
+		}
+	}
 }
